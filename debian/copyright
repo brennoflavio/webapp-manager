@@ -1,7 +1,7 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: webapp-manager
-Upstream-Contact: Linux Mint <root@linuxmint.com>
-Source: https://github.com/linuxmint/webapp-manager
+Upstream-Contact: Brenno Flávio <brenno.flavio412@gmail.com>
+Source: https://github.com/brennoflavio/webapp-manager
 
 Files: *
 Copyright: 2020 Linux Mint <root@linuxmint.com>

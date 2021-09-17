@@ -62,6 +62,7 @@ class WebAppManagerWindow():
 
         # Set the Glade file
         gladefile = "/usr/share/webapp-manager/webapp-manager.ui"
+
         self.builder = Gtk.Builder()
         self.builder.set_translation_domain(APP)
         self.builder.add_from_file(gladefile)
@@ -70,7 +71,6 @@ class WebAppManagerWindow():
         self.window.set_icon_name("webapp-manager")
         self.stack = self.builder.get_object("stack")
         self.icon_chooser = XApp.IconChooserButton()
-        self.builder.get_object("icon_button_box").pack_start(self.icon_chooser, 0, True, True)
         self.icon_chooser.set_icon("webapp-manager")
         self.icon_chooser.show()
 
@@ -79,41 +79,34 @@ class WebAppManagerWindow():
         self.favicon_button = self.builder.get_object("favicon_button")
         self.add_button = self.builder.get_object("add_button")
         self.remove_button = self.builder.get_object("remove_button")
-        self.edit_button = self.builder.get_object("edit_button")
         self.run_button = self.builder.get_object("run_button")
-        self.ok_button = self.builder.get_object("ok_button")
         self.name_entry = self.builder.get_object("name_entry")
         self.url_entry = self.builder.get_object("url_entry")
         self.url_label = self.builder.get_object("url_label")
-        self.isolated_switch = self.builder.get_object("isolated_switch")
-        self.isolated_label = self.builder.get_object("isolated_label")
-        self.navbar_switch = self.builder.get_object("navbar_switch")
-        self.navbar_label = self.builder.get_object("navbar_label")
-        self.privatewindow_switch = self.builder.get_object("privatewindow_switch")
-        self.privatewindow_label = self.builder.get_object("privatewindow_label")
         self.spinner = self.builder.get_object("spinner")
         self.favicon_stack = self.builder.get_object("favicon_stack")
-        self.browser_combo = self.builder.get_object("browser_combo")
-        self.browser_label = self.builder.get_object("browser_label")
 
-        # Widgets which are in the add page but not the edit page
-        self.add_specific_widgets = [self.browser_label, self.browser_combo,
-                                     self.isolated_label, self.isolated_switch,
-                                     self.navbar_label, self.navbar_switch,
-                                     self.privatewindow_label, self.privatewindow_switch]
+        self.ok_button = self.builder.get_object("ok_button")
+        self.ok_stack = self.builder.get_object("ok_stack")
+        self.ok_spinner = self.builder.get_object("ok_spinner")
+
+        self.error_dialog = self.builder.get_object("error_dialog")
+        self.error_ok_button = self.builder.get_object("error_ok_button")
+
+        self.add_specific_widgets = [self.url_entry, self.url_label, self.favicon_stack, self.favicon_button]
 
         # Widget signals
         self.add_button.connect("clicked", self.on_add_button)
         self.builder.get_object("cancel_button").connect("clicked", self.on_cancel_button)
         self.builder.get_object("cancel_favicon_button").connect("clicked", self.on_cancel_favicon_button)
         self.remove_button.connect("clicked", self.on_remove_button)
-        self.edit_button.connect("clicked", self.on_edit_button)
         self.run_button.connect("clicked", self.on_run_button)
         self.ok_button.connect("clicked", self.on_ok_button)
         self.favicon_button.connect("clicked", self.on_favicon_button)
         self.name_entry.connect("changed", self.on_name_entry)
         self.url_entry.connect("changed", self.on_url_entry)
         self.window.connect("key-press-event",self.on_key_press_event)
+        self.error_ok_button.connect("clicked", self.on_error_ok_button)
 
         # Menubar
         accel_group = Gtk.AccelGroup()
@@ -180,30 +173,7 @@ class WebAppManagerWindow():
         self.category_combo.set_model(category_model)
         self.category_combo.set_active(0) # Select 1st category
 
-        browser_model = Gtk.ListStore(object, str) # BROWSER_OBJ, BROWSER_NAME
-        num_browsers = 0
-        for browser in self.manager.get_supported_browsers():
-            if os.path.exists(browser.test_path):
-                browser_model.append([browser, browser.name])
-                num_browsers += 1
-        renderer = Gtk.CellRendererText()
-        self.browser_combo.pack_start(renderer, True)
-        self.browser_combo.add_attribute(renderer, "text", BROWSER_NAME)
-        self.browser_combo.set_model(browser_model)
-        self.browser_combo.set_active(0) # Select 1st browser
-        if num_browsers == 0:
-        	print ("No supported browsers were detected.")
-        	self.add_button.set_sensitive(False)
-        	self.add_button.set_tooltip_text(_("No supported browsers were detected."))
-        if (num_browsers < 2):
-            self.browser_label.hide()
-            self.browser_combo.hide()
-        self.browser_combo.connect("changed", self.on_browser_changed)
-
         self.load_webapps()
-
-        # Used by the OK button, indicates whether we're editing a web-app or adding a new one.
-        self.edit_mode = False
 
     def data_func_surface(self, column, cell, model, iter_, *args):
         pixbuf = model.get_value(iter_, COL_ICON)
@@ -224,7 +194,7 @@ class WebAppManagerWindow():
         dlg.set_transient_for(self.window)
         dlg.set_title(_("About"))
         dlg.set_program_name(_("Web Apps"))
-        dlg.set_comments(_("Run websites as if they were apps"))
+        dlg.set_comments(_("Run websites as if they were apps - Fork by Brenno"))
         try:
             h = open('/usr/share/common-licenses/GPL', encoding="utf-8")
             s = h.readlines()
@@ -239,7 +209,7 @@ class WebAppManagerWindow():
         dlg.set_version("__DEB_VERSION__")
         dlg.set_icon_name("webapp-manager")
         dlg.set_logo_icon_name("webapp-manager")
-        dlg.set_website("https://www.github.com/linuxmint/webapp-manager")
+        dlg.set_website("https://github.com/brennoflavio/webapp-manager")
         def close(w, res):
             if res == Gtk.ResponseType.CANCEL or res == Gtk.ResponseType.DELETE_EVENT:
                 w.destroy()
@@ -254,7 +224,6 @@ class WebAppManagerWindow():
         if iter is not None:
             self.selected_webapp = model.get_value(iter, COL_WEBAPP)
             self.remove_button.set_sensitive(True)
-            self.edit_button.set_sensitive(True)
             self.run_button.set_sensitive(True)
 
     def on_webapp_activated(self, treeview, path, column):
@@ -265,8 +234,6 @@ class WebAppManagerWindow():
         if ctrl and self.stack.get_visible_child_name() == "main_page":
             if event.keyval == Gdk.KEY_n:
                 self.on_add_button(self.add_button)
-            elif event.keyval == Gdk.KEY_e:
-                self.on_edit_button(self.edit_button)
             elif event.keyval == Gdk.KEY_d:
                 self.on_remove_button(self.remove_button)
         elif event.keyval == Gdk.KEY_Escape:
@@ -287,13 +254,19 @@ class WebAppManagerWindow():
         self.run_webapp(self.selected_webapp)
 
     def on_ok_button(self, widget):
+        self.ok_spinner.start()
+        self.ok_spinner.show()
+        self.ok_stack.set_visible_child_name("ok_spinner")
+        self.ok_button.set_sensitive(False)
+
+        self.create_webapp()
+
+
+    @_async
+    def create_webapp(self):
         category = self.category_combo.get_model()[self.category_combo.get_active()][CATEGORY_ID]
-        browser = self.browser_combo.get_model()[self.browser_combo.get_active()][BROWSER_OBJ]
         name = self.name_entry.get_text()
         url = self.get_url()
-        isolate_profile = self.isolated_switch.get_active()
-        navbar = self.navbar_switch.get_active()
-        privatewindow = self.privatewindow_switch.get_active()
         icon = self.icon_chooser.get_icon()
         if "/tmp" in icon:
             # If the icon path is in /tmp, move it.
@@ -301,51 +274,42 @@ class WebAppManagerWindow():
             new_path = os.path.join(ICONS_DIR, filename)
             shutil.copyfile(icon, new_path)
             icon = new_path
-        if self.edit_mode:
-            self.manager.edit_webapp(self.selected_webapp.path, name, url, icon, category)
-            self.load_webapps()
+
+        success = self.manager.create_webapp(name, url, icon, category)
+
+        if success:
+            self.load_webapp_after_creation()
         else:
-            self.manager.create_webapp(name, url, icon, category, browser, isolate_profile, navbar, privatewindow)
-            self.load_webapps()
+            self.show_webapp_creation_error()
+
+    @idle
+    def show_webapp_creation_error(self):
+        self.ok_spinner.stop()
+        self.ok_spinner.hide()
+        self.ok_button.set_sensitive(True)
+
+        self.error_dialog.show()
+
+    @idle
+    def load_webapp_after_creation(self):
+        self.ok_spinner.stop()
+        self.ok_spinner.hide()
+        self.ok_stack.set_visible_child_name("ok_label")
+        self.ok_button.set_sensitive(True)
+
+        self.load_webapps()
 
     def on_add_button(self, widget):
         self.name_entry.set_text("")
         self.url_entry.set_text("")
         self.icon_chooser.set_icon("webapp-manager")
         self.category_combo.set_active(0)
-        self.browser_combo.set_active(0)
-        self.isolated_switch.set_active(True)
-        self.navbar_switch.set_active(False)
-        self.privatewindow_switch.set_active(False)
         for widget in self.add_specific_widgets:
             widget.show()
-        self.show_hide_browser_widgets()
         self.stack.set_visible_child_name("add_page")
         self.headerbar.set_subtitle(_("Add a New Web App"))
-        self.edit_mode = False
         self.toggle_ok_sensitivity()
         self.name_entry.grab_focus()
-
-    def on_edit_button(self, widget):
-        if self.selected_webapp != None:
-            self.name_entry.set_text(self.selected_webapp.name)
-            self.icon_chooser.set_icon(self.selected_webapp.icon)
-            self.url_entry.set_text(self.selected_webapp.url)
-            model = self.category_combo.get_model()
-            iter = model.get_iter_first()
-            while iter:
-                category = model.get_value(iter, CATEGORY_ID)
-                if self.selected_webapp.category == category:
-                    self.category_combo.set_active_iter(iter)
-                    break
-                iter = model.iter_next(iter)
-            for widget in self.add_specific_widgets:
-                widget.hide()
-            self.stack.set_visible_child_name("add_page")
-            self.headerbar.set_subtitle(_("Edit Web App"))
-            self.edit_mode = True
-            self.toggle_ok_sensitivity()
-            self.name_entry.grab_focus()
 
     def on_cancel_button(self, widget):
         self.load_webapps()
@@ -410,26 +374,6 @@ class WebAppManagerWindow():
         self.stack.set_visible_child_name("add_page")
         self.headerbar.set_subtitle(_("Add a New Web App"))
 
-    def on_browser_changed(self, widget):
-        self.show_hide_browser_widgets()
-
-    def show_hide_browser_widgets(self):
-        browser = self.browser_combo.get_model()[self.browser_combo.get_active()][BROWSER_OBJ]
-        if (browser.browser_type == BROWSER_TYPE_FIREFOX):
-            self.isolated_label.hide()
-            self.isolated_switch.hide()
-            self.navbar_label.show()
-            self.navbar_switch.show()
-            self.privatewindow_label.show()
-            self.privatewindow_switch.show()
-        else:
-            self.isolated_label.show()
-            self.isolated_switch.show()
-            self.navbar_label.hide()
-            self.navbar_switch.hide()
-            self.privatewindow_label.show()
-            self.privatewindow_switch.show()
-
     def on_name_entry(self, widget):
         self.toggle_ok_sensitivity()
 
@@ -475,7 +419,6 @@ class WebAppManagerWindow():
         self.model.clear()
         self.selected_webapp = None
         self.remove_button.set_sensitive(False)
-        self.edit_button.set_sensitive(False)
         self.run_button.set_sensitive(False)
 
         webapps = self.manager.get_webapps()
@@ -502,6 +445,9 @@ class WebAppManagerWindow():
         self.stack.set_visible_child_name("main_page")
         self.headerbar.set_subtitle(_("Run websites as if they were apps"))
 
+    def on_error_ok_button(self, widget):
+        self.error_dialog.hide()
+        self.load_webapps()
 
 if __name__ == "__main__":
     application = MyApplication("org.x.webapp-manager", Gio.ApplicationFlags.FLAGS_NONE)
