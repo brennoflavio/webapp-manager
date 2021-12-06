@@ -99,6 +99,9 @@ class WebAppLauncher():
                     self.url = line.replace("X-WebApp-URL=", "")
                     continue
 
+                if "-nativefier-" in line:
+                    is_webapp = True
+
         if is_webapp and self.name != None and self.icon != None:
             self.is_valid = True
 
@@ -165,6 +168,10 @@ class WebAppManager():
             return False
 
         webapp_executable = self._find_webapp_executable(codename)
+        webapp_json = os.path.join(self._find_webapp_folder(codename), "resources/app/package.json")
+
+        with open(webapp_json, "r") as opened_webapp_json:
+            wm_class_name = json.loads(opened_webapp_json.read()).get("name")
 
         with open(path, 'w') as desktop_file:
             desktop_file.write("[Desktop Entry]\n")
@@ -182,7 +189,7 @@ class WebAppManager():
             desktop_file.write("Icon=%s\n" % icon)
             desktop_file.write("Categories=GTK;%s;\n" % category)
             desktop_file.write("MimeType=text/html;text/xml;application/xhtml_xml;\n")
-            desktop_file.write("StartupWMClass=WebApp-%s\n" % codename)
+            desktop_file.write("StartupWMClass=%s\n" % wm_class_name)
             desktop_file.write("StartupNotify=true\n")
             desktop_file.write("X-WebApp-URL=%s\n" % url)
 

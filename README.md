@@ -9,3 +9,10 @@ To use this app, install a recent NodeJS version (>=12.9) and Nativefier with:
 ```
 sudo npm install -g nativefier
 ```
+# Building
+
+To build this app, you can run
+
+```
+dpkg-buildpackage --no-sign
+```
